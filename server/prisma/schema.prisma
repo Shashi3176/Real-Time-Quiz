@@ -13,9 +13,28 @@ datasource db {
   provider = "postgresql"
 }
 
-model users{
-  id Int @id @default(autoincrement())
-  username String @unique
-  email String @unique
-  password String
+model users {
+  id        Int        @id @default(autoincrement())
+  username  String     @unique
+  email     String     @unique
+  password  String
+  quizRooms quizRoom[]
 }
+
+model quizRoom {
+  id Int   @id @default(autoincrement())
+  hostId Int
+  host   users @relation(fields: [hostId], references: [id])
+
+  title String 
+  desc String
+
+  user_id String
+  user_password String
+
+  mod_id String
+  mod_password String
+  
+  isLocked Boolean @default(false)
+}
+

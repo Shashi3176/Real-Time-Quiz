@@ -22,19 +22,42 @@ model users {
 }
 
 model quizRoom {
-  id Int   @id @default(autoincrement())
+  id     Int   @id @default(autoincrement())
   hostId Int
   host   users @relation(fields: [hostId], references: [id])
 
-  title String 
-  desc String
+  title String
+  desc  String
 
-  user_id String
+  user_id       String
   user_password String
 
-  mod_id String
+  mod_id       String
   mod_password String
-  
-  isLocked Boolean @default(false)
+
+  isLocked  Boolean     @default(false)
+  questions questions[]
 }
 
+model events {
+  id    Int  @id
+  event Json
+}
+
+model questions {
+  id Int @id @default(autoincrement())
+
+  quizRoomId Int
+  qRId       quizRoom @relation(fields: [quizRoomId], references: [id])
+
+  question String
+  desc     String
+
+  option_a String
+  option_b String
+  option_c String
+  option_d String
+
+  correct_option String
+  time Int @default(45)
+}

@@ -246,3 +246,402 @@ export const deleteQuizRoom = async (req, res) => {
       .json({ message: "Something went wrong while deleting the quiz room" });
   }
 };
+
+export const createQuestion = async (req, res) => {
+  try {
+    const {id, roomId} = req.params
+    const {question, desc, option_a, option_b, option_c, option_d, correct_option, time} = req.body
+
+    const number_id = Number(id);
+    const number_roomId = Number(roomId);
+
+    let Time = 45;
+    if(time) time = Time;
+
+    if(!id){
+      return res
+      .status(400)
+      .json({message: "User not found"})
+    }
+
+    if(!roomId){
+      return res
+      .status(400)
+      .json({message: "User not found"})
+    }
+
+    const quizRoom = await prisma.quizRoom.findUnique({
+      where: {
+        id: number_roomId
+      }
+    })
+
+    if(!quizRoom){
+      return res
+      .status(400)
+      .json({message: "Quiz Room not found"});
+    }
+
+    if(quizRoom.hostId != number_id){
+      return res
+      .status(403)
+      .json({message: "Only hosts are allowed to add questions"})
+    }
+
+    if(!question || !desc || !option_a || !option_b || !option_c || !option_d || !correct_option ){
+       return res
+       .status(401)
+       .json({message: "All fields are required"})
+    }
+
+    const quest = await prisma.questions.create({
+      data:{
+        question,
+        desc,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_option,
+        time: Time,
+
+        qRId: {
+          connect: {id: number_roomId}
+        }
+      }
+    })
+
+    return res
+    .status(200)
+    .json({
+      message: "Question created successfully",
+      data: {
+        id: quest.id,
+        desc
+      }
+    })
+
+  } catch (error) {
+    console.log(error);
+
+    return res
+    .status(500)
+    .json({message: "Something went wrong while creating the question"})
+  }
+}
+
+export const getQuestions = async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+
+    const number_id = Number(id);
+    const number_roomId = Number(roomId);
+
+    if (!id) {
+      return res
+        .status(400)
+        .json({ message: "User not found" });
+    }
+
+    if (!roomId) {
+      return res
+        .status(400)
+        .json({ message: "Room not found" });
+    }
+
+    const quizRoom = await prisma.quizRoom.findUnique({
+      where: {
+        id: number_roomId,
+      },
+    });
+
+    if (!quizRoom) {
+      return res
+        .status(400)
+        .json({ message: "Quiz Room not found" });
+    }
+
+    if (quizRoom.hostId != number_id) {
+      return res
+        .status(403)
+        .json({ message: "Only hosts are allowed to view questions" });
+    }
+
+    const questions = await prisma.questions.findMany({
+      where: {
+        quizRoomId: number_roomId,
+      },
+    });
+
+    return res
+      .status(200)
+      .json({
+        message: "Questions fetched successfully",
+        data: questions,
+      });
+
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(500)
+      .json({ message: "Something went wrong while fetching questions" });
+  }
+};
+
+export const getQuestionById = async (req, res) => {
+  try {
+    const { id, roomId, questionId } = req.params;
+
+    const number_id = Number(id);
+    const number_roomId = Number(roomId);
+    const number_questionId = Number(questionId);
+
+    if (!id) {
+      return res
+        .status(400)
+        .json({ message: "User not found" });
+    }
+
+    if (!roomId) {
+      return res
+        .status(400)
+        .json({ message: "Room not found" });
+    }
+
+    if (!questionId) {
+      return res
+        .status(400)
+        .json({ message: "Question ID is required" });
+    }
+
+    const quizRoom = await prisma.quizRoom.findUnique({
+      where: {
+        id: number_roomId,
+      },
+    });
+
+    if (!quizRoom) {
+      return res
+        .status(400)
+        .json({ message: "Quiz Room not found" });
+    }
+
+    if (quizRoom.hostId != number_id) {
+      return res
+        .status(403)
+        .json({ message: "Only hosts are allowed to view questions" });
+    }
+
+    const question = await prisma.questions.findUnique({
+      where: {
+        id: number_questionId,
+        quizRoomId: number_roomId,
+      },
+    });
+
+    if (!question) {
+      return res
+        .status(404)
+        .json({ message: "Question not found" });
+    }
+
+    return res
+      .status(200)
+      .json({
+        message: "Question fetched successfully",
+        data: question,
+      });
+
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(500)
+      .json({ message: "Something went wrong while fetching the question" });
+  }
+};
+
+export const updateQuestion = async (req, res) => {
+  try {
+    const { id, roomId, questionId } = req.params;
+    const { question, desc, option_a, option_b, option_c, option_d, correct_option, time } = req.body;
+
+    let Time = 45;
+    if(time) Time = 45;
+
+    const number_id = Number(id);
+    const number_roomId = Number(roomId);
+    const number_questionId = Number(questionId);
+
+    if (!id) {
+      return res
+        .status(400)
+        .json({ message: "User not found" });
+    }
+
+    if (!roomId) {
+      return res
+        .status(400)
+        .json({ message: "Room not found" });
+    }
+
+    if (!questionId) {
+      return res
+        .status(400)
+        .json({ message: "Question ID is required" });
+    }
+
+    const quizRoom = await prisma.quizRoom.findUnique({
+      where: {
+        id: number_roomId,
+      },
+    });
+
+    if (!quizRoom) {
+      return res
+        .status(400)
+        .json({ message: "Quiz Room not found" });
+    }
+
+    if (quizRoom.hostId != number_id) {
+      return res
+        .status(403)
+        .json({ message: "Only hosts are allowed to update questions" });
+    }
+
+    const existingQuestion = await prisma.questions.findUnique({
+      where: {
+        id: number_questionId,
+        quizRoomId: number_roomId,
+      },
+    });
+
+    if (!existingQuestion) {
+      return res
+        .status(404)
+        .json({ message: "Question not found" });
+    }
+
+    if (!question || !desc || !option_a || !option_b || !option_c || !option_d || !correct_option) {
+      return res
+        .status(401)
+        .json({ message: "All fields are required" });
+    }
+
+    const updatedQuestion = await prisma.questions.update({
+      where: {
+        id: number_questionId,
+      },
+      data: {
+        question,
+        desc,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_option,
+        time: Time,
+      },
+    });
+
+    return res
+      .status(200)
+      .json({
+        message: "Question updated successfully",
+        data: {
+          id: updatedQuestion.id,
+          desc: updatedQuestion.desc,
+        },
+      });
+
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(500)
+      .json({ message: "Something went wrong while updating the question" });
+  }
+};
+
+export const deleteQuestion = async (req, res) => {
+  try {
+    const { id, roomId, questionId } = req.params;
+
+    const number_id = Number(id);
+    const number_roomId = Number(roomId);
+    const number_questionId = Number(questionId);
+
+    if (!id) {
+      return res
+        .status(400)
+        .json({ message: "User not found" });
+    }
+
+    if (!roomId) {
+      return res
+        .status(400)
+        .json({ message: "Room not found" });
+    }
+
+    if (!questionId) {
+      return res
+        .status(400)
+        .json({ message: "Question ID is required" });
+    }
+
+    const quizRoom = await prisma.quizRoom.findUnique({
+      where: {
+        id: number_roomId,
+      },
+    });
+
+    if (!quizRoom) {
+      return res
+        .status(400)
+        .json({ message: "Quiz Room not found" });
+    }
+
+    if (quizRoom.hostId != number_id) {
+      return res
+        .status(403)
+        .json({ message: "Only hosts are allowed to delete questions" });
+    }
+
+    const existingQuestion = await prisma.questions.findUnique({
+      where: {
+        id: number_questionId,
+        quizRoomId: number_roomId,
+      },
+    });
+
+    if (!existingQuestion) {
+      return res
+        .status(404)
+        .json({ message: "Question not found" });
+    }
+
+    await prisma.questions.delete({
+      where: {
+        id: number_questionId,
+      },
+    });
+
+    return res
+      .status(200)
+      .json({
+        message: "Question deleted successfully",
+        data: {
+          id: existingQuestion.id,
+          desc: existingQuestion.desc,
+        },
+      });
+
+  } catch (error) {
+    console.log(error);
+
+    return res
+      .status(500)
+      .json({ message: "Something went wrong while deleting the question" });
+  }
+};

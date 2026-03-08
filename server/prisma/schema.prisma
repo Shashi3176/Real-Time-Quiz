@@ -13,9 +13,9 @@ datasource db {
   provider = "postgresql"
 }
 
-model users{
-  id Int @id @default(autoincrement())
+model users {
+  id       Int    @id @default(autoincrement())
   username String @unique
-  email String @unique
+  email    String @unique
   password String
 }

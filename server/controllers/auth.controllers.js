@@ -1,94 +1,132 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import prisma from "../services/prisma.services.js"; 
-
-const generateTokenAndSetCookie = (userId, res) => {
-    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "15d" });
-
-    res.cookie("jwt", token, {
-        maxAge: 15 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV !== "development",
-    });
-};
-
+import {prisma} from "../services/prisma.services.js"; 
 import { generateToken } from "../services/jwt.services.js";
 import bcrypt from "bcryptjs";
-import User from "../models/user.model.js";
 
 export const signup = async (req, res) => {
   try {
-    const { fullName, email, password, confirmPassword } = req.body;
+    const { username, email, password, confirmPassword } = req.body;
+
+    if(!username || !email || !password || !confirmPassword){
+      return res
+      .status(400)
+      .json({message: "All fields are required"})
+    };
 
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+      return res
+      .status(400)
+      .json({ message: "Passwords do not match" });
     }
 
-    const user = await User.findOne({ email });
-    if (user) return res.status(400).json({ message: "Email already exists" });
+    const existingUser = await prisma.users.findFirst({
+      where: {
+        OR: [{ email }, { username }],
+      },
+    });
+
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: "Email or username already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = new User({
-      fullName,
-      email,
-      password: hashedPassword,
+    const newUser = await prisma.users.create({
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+      },
     });
 
-    if (newUser) {
-      
-      const token = generateToken(newUser._id);
+    const token = generateToken(newUser.id);
 
-      res.cookie("auth_token", token, {
-        maxAge: 15 * 24 * 60 * 60 * 1000, 
-        httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV !== "development",
-      });
+    res.cookie("auth_token", token, {
+      maxAge: 15 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false,
+    });
 
-      await newUser.save();
-      res.status(201).json({ _id: newUser._id, email: newUser.email });
-    }
+    return res.status(201).json({
+      message: "User signed up successfully",
+      data: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    res
+    .status(500)
+    .json({ message: "Internal server error" });
   }
 };
 
 export const login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        const user = await prisma.user.findUnique({
-            where: { email },
-        });
+    if(!email || !password){
+      return res
+      .status(400)
+      .json({message: "All fields are required"})
+    };
 
-    
-        const isPasswordCorrect = await bcrypt.compare(password, user?.password || "");
+    const user = await prisma.users.findUnique({
+      where: { email },
+    });
 
-        if (!user || !isPasswordCorrect) {
-            return res.status(400).json({ error: "Invalid email or password" });
-        }
-
-        generateTokenAndSetCookie(user.id, res);
-
-        res.status(200).json({
-            id: user.id,
-            username: user.username,
-            email: user.email,
-        });
-    } catch (error) {
-        console.error("Error in login controller", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
+    if (!user) {
+      return res
+      .status(401)
+      .json({ message: "Invalid email or password" });
     }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+      return res
+      .status(401)
+      .json({ message: "Invalid email or password" });
+    }
+
+    const token = generateToken(user.id);
+
+    res.cookie("auth_token", token, {
+      maxAge: 15 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false,
+    });
+
+    res.status(200).json({
+      message: "Login successful",
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res
+    .status(500)
+    .json({ message: "Internal server error" });
+  }
 };
 
 export const logout = (req, res) => {
-  try {
-   
+  try {   
     res.clearCookie("auth_token");
-    res.status(200).json({ message: "Logged out successfully" });
+
+    res
+    .status(200)
+    .json({ message: "Logged out successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    res
+    .status(500)
+    .json({ message: "Internal Server Error" });
   }
 };
